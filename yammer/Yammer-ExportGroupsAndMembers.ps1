@@ -1,5 +1,6 @@
 # PowerShell script to export Yammer groups, members and admins
 # Token hint: https://support.office.com/en-us/article/export-yammer-group-members-to-a-csv-file-201a78fd-67b8-42c3-9247-79e79f92b535#step2
+# Token hint2: https://www.yammer.com/client_applications
 # Pre-requisite: Enable Private Content Mode so the export includes private groups you're not a member of
 # Remember to clean up token & revert Content Mode when complete
 
@@ -29,7 +30,6 @@ $YammerGroups | select type,id,full_name,privacy,created_at
 $GroupAdmins = @()
 $GroupMembers = @()
 $GroupSummary = @()
-$GroupSummary += """Group_Name"",""ID"",""State"",""Privacy"",""Show_In_Directory"",""Member_Count"",""Admin_Count"""
 $GroupCount = 0
 foreach ($group in $YammerGroups) {
     $GroupId = $group.id
@@ -51,12 +51,23 @@ foreach ($group in $YammerGroups) {
         $GroupCycle ++
     }	
 	While ($MoreGroupMembers.count -gt 0)
-    $groupResult = """$($group.full_name)"",""$($group.id)"",""$($group.state)"",""$($group.privacy)"",""$($group.show_in_directory)"",""$($GroupCount)"",""$($AdminCount)"""
-    $groupSummary += $groupResult
-    write-output $groupResult
+    $groupResult = @{
+        Group_Name = $group.full_name
+        ID = $group.id
+        State = $group.state
+        Privacy = $group.privacy
+        Show_In_Directory = $group.show_in_directory
+        Created = $group.created_at
+        Member_Count = $GroupCount
+        Admin_Count = $AdminCount
+    }
+    $groupObject = New-Object -TypeName PSObject -Property $groupResult
+    $groupSummary += $groupObject
+    #$groupSummary += $groupResult
+    write-output $groupObject
 }
 
 # Export the results to CSV files
-$groupSummary | out-file group-summary.csv
+$groupSummary | Select Group_Name, ID, State, Privacy, Show_In_Directory, Created, Member_Count, Admin_Count | export-csv group-summary.csv -NoTypeInformation
 $groupAdmins | export-csv group-admin-export.csv -NoTypeInformation
 $groupMembers | export-csv group-member-export.csv -NoTypeInformation
